@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d2326"><meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png">
+<title>BGM 커터</title>
+<style>
+:root{--bg:#0d2326;--p:#14343a;--p2:#1d4750;--ink:#efe6d2;--mut:#8fb0ab;--sea:#7fd6c2;--sun:#f2b84b;--bad:#ef7b6b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Noto Sans KR",system-ui,sans-serif;padding:calc(10px + env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom));max-width:640px;margin-inline:auto}
+h1{font-size:21px;margin:0}header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+header p{margin:0;color:var(--mut);font-size:12px}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 12px;min-height:44px;background:var(--p2);color:var(--ink)}
+button:active{filter:brightness(1.25)}button.pri{background:var(--sea);color:#08302b}button.wrn{background:var(--sun);color:#3a2800}button.bad{background:var(--bad);color:#3a0f09}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.row>*{flex:1 1 auto}
+.in{width:100%;background:#0a1b1e;color:var(--ink);border:1px solid #2b5a62;border-radius:10px;padding:10px;font:inherit;font-weight:700;text-align:center;min-height:44px}
+#info{color:var(--mut);font-size:13px;margin:4px 0 8px;overflow-wrap:anywhere}
+#wf{display:block;width:100%;height:170px;border-radius:12px;background:#0a1b1e;touch-action:none}
+#pan{width:100%;display:none;accent-color:var(--sea)}
+.bar{display:flex;gap:8px;align-items:center;margin:8px 0}.bar b{flex:1;text-align:center;font-variant-numeric:tabular-nums;color:var(--sea)}
+nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 0}
+nav button{background:var(--p);color:var(--mut);border-radius:10px 10px 0 0}nav button.on{background:var(--p2);color:var(--ink);box-shadow:inset 0 -3px var(--sun)}
+section{background:var(--p);border-radius:0 0 12px 12px;padding:12px}section[hidden]{display:none}
+.tr{display:grid;grid-template-columns:44px 64px 1fr 64px;gap:6px;align-items:center;margin:6px 0}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:8px}label.l{display:block;color:var(--mut);font-size:12px;margin-bottom:3px}
+.mut{color:var(--mut);font-size:12px;margin:6px 0}.chk{display:flex;gap:8px;align-items:center;margin:8px 0}.chk input{width:22px;height:22px;accent-color:var(--sea)}
+input[type=range]{width:100%;accent-color:var(--sea)}select.in{text-align:left}
+#lib>div{display:flex;gap:6px;align-items:center;background:#0f2b30;border-radius:10px;padding:8px;margin:6px 0}#lib span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+#lib button{min-height:38px;padding:6px 10px}
+#toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:#0d2326;padding:11px 16px;border-radius:12px;font-weight:700;opacity:0;pointer-events:none;transition:.2s;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}#toast.bad{background:var(--bad)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style></head><body>
+<header><div><h1>BGM 커터</h1><p>여행 영상에 쓸 음악 다듬기</p></div><button class="pri" data-a="open">음악 열기</button></header>
+<input id="fi" type="file" accept="audio/*,.mp3,.m4a,.aac,.flac,.wav,.ogg" hidden>
+<div id="info">음악 파일을 열어 주세요. (mp3, m4a, wav, flac, ogg)</div>
+<canvas id="wf"></canvas><input id="pan" type="range" min="0" max="1000" value="0" aria-label="파형 위치 이동">
+<div class="bar"><button data-a="rs0">⏮</button><button class="pri" id="pp" data-a="pp" style="min-width:104px">▶ 재생</button><b id="tm">00:00.00 / 00:00.00</b></div>
+<div class="row"><button data-a="zo">－ 축소</button><button data-a="zi">＋ 확대</button><button data-a="zr">전체</button><button data-a="zs">선택 확대</button></div>
+<div class="row"><button data-a="undo" id="ud">뒤로 (0)</button><button data-a="redo" id="rd">앞으로 (0)</button><button data-a="orig">원본 다시</button></div>
+<nav><button class="on" data-t="cut">자르기</button><button data-t="fx">효과</button><button data-t="lp">늘리기</button><button data-t="out">저장</button></nav>
+
+<section id="t-cut">
+<div class="tr"><span>시작</span><button data-a="n" data-v="s-.1">−0.1</button><input id="ss" class="in" inputmode="decimal"><button data-a="n" data-v="s+.1">+0.1</button></div>
+<div class="tr"><span>끝</span><button data-a="n" data-v="e-.1">−0.1</button><input id="se" class="in" inputmode="decimal"><button data-a="n" data-v="e+.1">+0.1</button></div>
+<p class="mut">파형을 드래그하면 구간 선택, 탭하면 재생 위치 이동. 선택 길이 <b id="sl">00:00.00</b></p>
+<div class="row"><button data-a="cs">재생위치 → 시작</button><button data-a="ce">재생위치 → 끝</button><button data-a="cl">선택 해제</button><button data-a="rsel">다시 선택</button></div>
+<div class="row"><button class="pri" data-a="keep">선택만 남기기</button><button class="wrn" data-a="del">선택 삭제</button><button data-a="trim">앞뒤 무음 제거</button></div>
+<div class="row"><button data-a="ps">구간 듣기</button><button data-a="pa">시작 3초</button><button data-a="pz">끝 3초</button></div>
+</section>
+
+<section id="t-fx" hidden>
+<div class="fr"><div><label class="l">페이드 인 (초)</label><input id="fi_" class="in" data-k="fi" value="1.5" inputmode="decimal"></div><div><label class="l">페이드 아웃 (초)</label><input id="fo" class="in" data-k="fo" value="2.0" inputmode="decimal"></div></div>
+<label class="l" style="margin-top:10px">페이드 곡선</label>
+<select id="cv" class="in" data-k="cv"><option value="smooth">부드럽게 (S자)</option><option value="lin">직선</option><option value="nat">자연스럽게 (소리 감각)</option></select>
+<label class="l" style="margin-top:10px">전체 음량 <b id="vl">100%</b></label>
+<input id="vol" type="range" min="0" max="300" step="5" value="100">
+<label class="chk"><input id="nm" type="checkbox">음량 평준화 (가장 큰 소리를 -1dB로)</label>
+<p class="mut" id="clip" style="color:var(--sun);font-weight:700"></p>
+<p class="mut">페이드·음량은 재생, 저장 모두에 반영돼요. 점선이 페이드 모양이에요.</p>
+</section>
+
+<section id="t-lp" hidden>
+<div class="fr"><div><label class="l">추가 반복 (회)</label><input id="rp" class="in" value="1" inputmode="numeric"></div><div><label class="l">이음새 크로스페이드 (초)</label><input id="xf" class="in" data-k="xf" value="0.5" inputmode="decimal"></div></div>
+<div class="row"><button class="wrn" data-a="loop">전체를 뒤에 이어붙이기</button><button data-a="seam">이음새 듣기</button></div>
+<label class="l" style="margin-top:12px">영상 길이에 맞추기 (예: 3:00)</label>
+<div class="fr"><input id="tg" class="in" data-k="tg" value="3:00" inputmode="decimal"><button class="pri" data-a="fit">맞추기</button></div>
+<p class="mut">짧으면 이음새를 부드럽게 반복하고, 길면 잘라요. 끝은 페이드 아웃으로 마무리돼요.</p>
+</section>
+
+<section id="t-out" hidden>
+<div class="fr"><div><label class="l">형식</label><select id="fm" class="in" data-k="fm"><option value="mp3">MP3</option><option value="wav">WAV (용량 큼)</option></select></div><div><label class="l">MP3 음질</label><select id="kb" class="in" data-k="kb"><option>128</option><option>192</option><option selected>256</option><option>320</option></select></div></div>
+<label class="chk"><input id="so" type="checkbox">선택 구간만 저장</label>
+<div class="row"><button class="pri" data-a="save">기기에 저장</button><button data-a="share">공유하기</button></div>
+<button class="wrn" data-a="lib" style="width:100%">여행 영상용 보관함에 담기</button>
+<div style="margin:14px 0 4px;padding-top:12px;border-top:1px solid #2b5a62"><label class="l">벨소리·알람음으로 저장 (설치 앱 전용)</label>
+<select id="rk" class="in"><option value="ringtone">전화 벨소리</option><option value="alarm">알람음</option><option value="notification">알림음</option></select>
+<label class="chk"><input id="rdf" type="checkbox">저장하면서 기본 소리로 바로 지정</label>
+<button class="pri" data-a="ring" style="width:100%">벨소리·알람음으로 저장</button>
+<p class="mut">‘선택 구간만 저장’을 켜면 고른 구간만 만들어져요. 지정하지 않고 저장만 하면 설정 > 소리에서 목록으로 고를 수 있고, 알람은 시계 앱의 알람 소리 목록에 나타나요.</p></div>
+<p class="mut">보관함에 담은 음악은 같은 주소(github.io)의 여행 영상 앱에서 바로 가져다 쓸 수 있어요. MP3 만들기는 처음 한 번 인터넷이 필요해요.</p>
+<div id="lib"></div>
+</section>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],PI=Math.PI,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let AC,C=null,sr=44100,pk=0,name='',sel=[0,0],cur=0,zoom=1,vs=0,hist=[],rdo=[],src=null,playing=false,t0=0,h0=0,plen=0,drag=null,raf=0,last=null,lastDraw=0,orig=null;
+const N=()=>C?C[0].length:0,dur=()=>C?N()/sr:0,dp=()=>devicePixelRatio||1,part=()=>sel[1]>sel[0]&&(sel[0]>.01||sel[1]<dur()-.01);
+const fmt=s=>{const t=Math.round(Math.max(0,s)*100)/100,m=Math.floor(t/60);return String(m).padStart(2,'0')+':'+(t-m*60).toFixed(2).padStart(5,'0')};
+function parse(s){s=String(s).trim();if(!s)throw Error('시간이 비어 있어요');let v;if(s.includes(':')){const p=s.split(':').map(Number);v=p.length==2?p[0]*60+p[1]:p.length==3?p[0]*3600+p[1]*60+p[2]:NaN}else v=Number(s);if(!isFinite(v)||v<0)throw Error('시간은 1:23.5 또는 초 숫자로 입력하세요');return v}
+function toast(m,bad){const e=$('#toast');e.textContent=m;e.className='show'+(bad?' bad':'');clearTimeout(toast.t);toast.t=setTimeout(()=>e.className='',2800)}
+const req=()=>{if(!C){toast('먼저 음악 파일을 열어 주세요',1);throw 0}};
+const peakOf=c=>{let m=0;for(const a of c)for(let i=0;i<a.length;i++){const v=a[i]<0?-a[i]:a[i];if(v>m)m=v}return m};
+const curve=(t,k)=>k=='smooth'?.5-.5*Math.cos(PI*t):k=='nat'?t*t:t;
+function FX(q){const g=id=>{try{return parse($(id).value||'0')}catch(e){if(q)return 0;throw Error('페이드 시간 오류: '+e.message)}};return{fi:g('#fi_'),fo:g('#fo'),cv:$('#cv').value,vol:+$('#vol').value,norm:$('#nm').checked}}
+function render(B,fx,i0=0,i1,p){const n=B[0].length;i1=Math.min(i1??n,n);const iL=Math.min(Math.round(fx.fi*sr),n),oL=Math.min(Math.round(fx.fo*sr),n);let g=fx.vol/100;if(fx.norm){p=p||peakOf(B);if(p>1e-6)g*=.891/p}
+ return B.map(c=>{const o=c.slice(i0,i1);for(let i=0;i<o.length;i++){const k=i+i0;let m=g;if(k<iL)m*=curve(k/Math.max(1,iL-1),fx.cv);const r=n-1-k;if(r<oL)m*=curve(r/Math.max(1,oL-1),fx.cv);const v=o[i]*m;o[i]=v>1?1:v<-1?-1:v}return o})}
+function loopBuild(B,copies,xf){const L=B[0].length;xf=Math.min(xf,L>>1);const st=Math.max(1,L-xf),T=L+(copies-1)*st;if(T*B.length*4>5e8)throw Error('결과가 너무 길어요. 횟수나 목표 길이를 줄여 주세요');const d=Math.max(1,xf-1);
+ return B.map(c=>{const o=new Float32Array(T);for(let k=0;k<copies;k++){const s=k*st;for(let i=0;i<L;i++){let m=1;if(xf){if(k>0&&i<xf)m*=Math.sin(i/d*PI/2);if(k<copies-1&&i>=L-xf)m*=Math.cos((i-(L-xf))/d*PI/2)}o[s+i]+=c[i]*m}}return o})}
+function join(A,B,n){n=Math.min(n,A[0].length,B[0].length);return A.map((a,j)=>{const b=B[j],o=new Float32Array(a.length+b.length-n),s=a.length-n,d=Math.max(1,n-1);o.set(a.subarray(0,s));for(let i=0;i<n;i++){const t=i/d*PI/2;o[s+i]=a[s+i]*Math.cos(t)+b[i]*Math.sin(t)}o.set(b.subarray(n),a.length);return o})}
+const cutC=(B,i0,i1)=>B.map(c=>c.slice(i0,i1));
+// ── 화면 ──
+function ui(){$('#ud').textContent='뒤로 ('+hist.length+')';$('#rd').textContent='앞으로 ('+rdo.length+')';$('#pp').textContent=playing?'⏸ 멈춤':'▶ 재생';
+ $('#info').textContent=C?`${name} · ${fmt(dur())} · ${sr.toLocaleString()}Hz · ${C.length==1?'모노':'스테레오'}`:'음악 파일을 열어 주세요. (mp3, m4a, wav, flac, ogg)';clip()}
+function clip(){const f=FX(1);$('#vl').textContent=f.vol+'%';$('#clip').textContent=((f.norm?.891:pk)*f.vol/100>1)?'⚠ 음량이 커서 소리가 찌그러질 수 있어요':''}
+const vspan=()=>dur()/zoom,x2t=x=>clamp(vs+clamp(x/$('#wf').width,0,1)*vspan(),0,dur()),t2x=t=>(t-vs)/vspan()*$('#wf').width;
+function clampView(){vs=clamp(vs,0,Math.max(0,dur()-vspan()));const p=$('#pan');p.style.display=zoom>1?'block':'none';const r=dur()-vspan();p.value=r>0?vs/r*1000:0}
+function setCur(t){cur=clamp(t,0,dur());$('#tm').textContent=fmt(cur)+' / '+fmt(dur())}
+function setSel(s,e,rem,nd){const d=dur();s=clamp(s,0,d);e=clamp(e,s,d);sel=[s,e];$('#ss').value=fmt(s);$('#se').value=fmt(e);$('#sl').textContent=fmt(e-s);if(rem&&part())last=[s,e];if(!nd)draw()}
+function setZoom(z,c){if(!C)return;const sp=vspan();c??=(cur>=vs&&cur<=vs+sp)?cur:vs+sp/2;const rel=(c-vs)/sp;zoom=clamp(z,1,128);vs=c-rel*vspan();clampView();draw()}
+function fit(){const c=$('#wf');c.width=Math.round(c.clientWidth*dp());c.height=Math.round(c.clientHeight*dp());draw()}
+function draw(){lastDraw=performance.now();const c=$('#wf'),x=c.getContext('2d'),W=c.width,H=c.height,m=H/2,d=dur(),D=dp();x.fillStyle='#0a1b1e';x.fillRect(0,0,W,H);
+ if(!C){x.fillStyle='#5f827d';x.font=14*D+'px sans-serif';x.textAlign='center';x.fillText('음악 파일을 열면 파형이 보여요',W/2,m);return}
+ const sp=vspan(),steps=[.1,.2,.5,1,2,5,10,15,30,60,120,300],st=steps.find(v=>v>=sp/5)||600;x.strokeStyle='#17383d';x.fillStyle='#5f827d';x.font=10*D+'px sans-serif';x.textAlign='left';x.lineWidth=1;
+ for(let t=Math.ceil(vs/st)*st;t<=vs+sp;t+=st){const px=t2x(t);x.beginPath();x.moveTo(px,0);x.lineTo(px,H);x.stroke();x.fillText(t>=60?Math.floor(t/60)+':'+String(Math.round(t%60)).padStart(2,'0'):(st<1?t.toFixed(1):Math.round(t))+'s',px+3,H-5)}
+ const a=t2x(sel[0]),b=t2x(sel[1]),p=part();if(p){x.fillStyle='rgba(242,184,75,.16)';x.fillRect(a,0,b-a,H)}
+ const s0=Math.floor(vs*sr),n=Math.min(N()-s0,Math.ceil(sp*sr)),per=n/W,stride=Math.max(1,Math.floor(per/256));
+ for(let i=0;i<W;i++){const f=s0+Math.floor(i*per),t=Math.min(N(),Math.max(s0+Math.floor((i+1)*per),f+1));let mx=0;for(const ch of C)for(let k=f;k<t;k+=stride){const v=Math.abs(ch[k]);if(v>mx)mx=v}
+  const h=Math.max(1,mx/(pk||1)*H*.42);x.fillStyle=p&&i>=a&&i<=b?'#f2d58a':'#7fd6c2';x.fillRect(i,m-h,1,h*2)}
+ const fx=FX(1);x.strokeStyle='#f2b84b';x.lineWidth=2*D;x.setLineDash([6*D,4*D]);[[fx.fi,0],[fx.fo,1]].forEach(([L,o])=>{L=Math.min(L,d);if(L<=0)return;x.beginPath();for(let i=0;i<=24;i++){const t=i/24,y=6*D+(H-12*D)*(1-curve(o?1-t:t,fx.cv)),px=t2x(o?d-L+t*L:t*L);i?x.lineTo(px,y):x.moveTo(px,y)}x.stroke()});x.setLineDash([]);
+ if(p)[a,b].forEach(px=>{x.fillStyle='#f2b84b';x.fillRect(px-1.5*D,0,3*D,H);x.beginPath();x.arc(px,m,12*D,0,2*PI);x.fill();x.fillStyle='#0d2326';x.fillRect(px-1*D,m-5*D,2*D,10*D)});
+ const cx=t2x(cur);x.fillStyle=x.strokeStyle='#ef7b6b';x.lineWidth=2*D;x.beginPath();x.moveTo(cx,0);x.lineTo(cx,H);x.stroke();x.beginPath();x.moveTo(cx-7*D,0);x.lineTo(cx+7*D,0);x.lineTo(cx,11*D);x.fill()}
+const cv=$('#wf');
+cv.addEventListener('pointerdown',e=>{if(!C)return;cv.setPointerCapture(e.pointerId);const x=e.offsetX*dp(),tol=24*dp(),p=part();drag={x:e.offsetX,t:x2t(x),m:p&&Math.abs(x-t2x(sel[0]))<tol?'s':p&&Math.abs(x-t2x(sel[1]))<tol?'e':'n',mv:0}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const t=x2t(e.offsetX*dp());if(drag.m=='s')setSel(Math.min(t,sel[1]),sel[1]);else if(drag.m=='e')setSel(sel[0],Math.max(t,sel[0]));else if(drag.mv||Math.abs(e.offsetX-drag.x)>6){drag.mv=1;setSel(Math.min(drag.t,t),Math.max(drag.t,t))}});
+cv.addEventListener('pointerup',()=>{if(!drag)return;if(drag.m=='n'&&!drag.mv)seek(drag.t);else setSel(sel[0],sel[1],1);drag=null});
+cv.addEventListener('pointercancel',()=>drag=null);
+$('#pan').oninput=e=>{vs=e.target.value/1000*Math.max(0,dur()-vspan());draw()};
+// ── 재생 ──
+function stop(){if(src){src.onended=null;try{src.stop()}catch(e){}src=null}playing=false;cancelAnimationFrame(raf)}
+function playBuf(B,head){stop();AC=AC||new(window.AudioContext||window.webkitAudioContext)();AC.resume();const b=AC.createBuffer(B.length,B[0].length,sr);B.forEach((c,i)=>b.copyToChannel(c,i));const s=AC.createBufferSource();s.buffer=b;s.connect(AC.destination);
+ s.onended=()=>{if(src===s){src=null;playing=false;if(head!=null)setCur(Math.min(dur(),h0+plen));ui();draw()}};src=s;s.start();
+ if(head!=null){playing=true;h0=head;plen=b.duration;t0=AC.currentTime;const f=()=>{if(!playing)return;setCur(Math.min(h0+AC.currentTime-t0,dur()));const sp=vspan();if(zoom>1&&(cur<vs||cur>vs+sp)){vs=cur-sp*.2;clampView()}if(performance.now()-lastDraw>45)draw();raf=requestAnimationFrame(f)};raf=requestAnimationFrame(f)}ui()}
+function pause(){if(playing){const p=h0+AC.currentTime-t0;stop();setCur(p)}else stop();ui();draw()}
+function seek(t){const was=playing;if(was)stop();setCur(t);draw();if(was)play();else ui()}
+function play(){req();let s=cur>=dur()-.05?0:cur;if(s!==cur)setCur(0);playBuf(render(C,FX(),Math.round(s*sr),N(),pk),s)}
+function playSel(edge){req();const fx=FX(),i0=Math.round(sel[0]*sr),i1=Math.round(sel[1]*sr);if(i1<=i0)throw Error('선택 구간이 비어 있어요');const B=C.map(c=>c.subarray(i0,i1)),n=B[0].length;let a=0,b=n;
+ if(edge=='s')b=Math.min(n,3*sr|0);else if(edge=='e')a=Math.max(0,n-(3*sr|0));else if(sel[0]<=cur&&cur<sel[1]-.05)a=Math.round((cur-sel[0])*sr);playBuf(render(B,fx,a,b),sel[0]+a/sr)}
+function seam(){req();const xf=Math.min(Math.round(parse($('#xf').value||'0')*sr),N()>>1),k=Math.min(N()>>1,4*sr|0),J=join(C.map(c=>c.subarray(N()-k)),C.map(c=>c.subarray(0,k)),xf);
+ playBuf(render(J,{fi:0,fo:0,cv:'lin',vol:+$('#vol').value,norm:$('#nm').checked},0,null,pk),null);toast('이음새: 곡의 끝 4초 → 처음 4초 (가운데가 이어지는 부분)')}
+// ── 편집 ──
+function setAudio(c,s){C=c;if(s)sr=s;pk=peakOf(c);zoom=1;vs=0;last=null;clampView();setCur(0);setSel(0,dur(),0,1);ui();draw()}
+function commit(c,label){stop();hist.push({C,label});while(hist.length>1&&hist.reduce((a,h)=>a+h.C.length*h.C[0].length*4,0)>6e8)hist.shift();rdo=[];setAudio(c);toast(label+' 완료 · '+fmt(dur()))}
+const idx=()=>[Math.round(sel[0]*sr),Math.round(sel[1]*sr)];
+async function openBlob(f,nm){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();toast('불러오는 중…');const b=await AC.decodeAudioData(await f.arrayBuffer());stop();hist=[];rdo=[];name=nm;
+ const c=[...Array(Math.min(2,b.numberOfChannels))].map((_,i)=>b.getChannelData(i).slice());orig=f;setAudio(c,b.sampleRate);toast('불러왔어요: '+nm)}catch(e){toast('이 파일은 읽을 수 없어요. mp3, m4a, wav, flac, ogg 파일인지 확인해 주세요',1)}}
+function wav(R){const n=R[0].length,c=R.length,v=new DataView(new ArrayBuffer(44+n*c*2)),w=(o,s)=>[...s].forEach((ch,i)=>v.setUint8(o+i,ch.charCodeAt(0)));w(0,'RIFF');v.setUint32(4,36+n*c*2,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,c,true);v.setUint32(24,sr,true);v.setUint32(28,sr*c*2,true);v.setUint16(32,c*2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*c*2,true);let o=44;for(let i=0;i<n;i++)for(let j=0;j<c;j++){v.setInt16(o,Math.round(clamp(R[j][i],-1,1)*32767),true);o+=2}return new Blob([v.buffer],{type:'audio/wav'})}
+const lame=()=>window.lamejs?Promise.resolve():new Promise((ok,no)=>{const L=u=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>u=='lame.min.js'?L('https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js'):no(Error('MP3 만들기는 처음 한 번 인터넷이 필요해요. 지금은 WAV로 저장해 보세요'));document.head.appendChild(s)};L('lame.min.js')});
+async function mp3(R,kb){await lame();const E=new lamejs.Mp3Encoder(R.length,sr,kb),I=f=>{const o=new Int16Array(f.length);for(let i=0;i<f.length;i++)o[i]=clamp(f[i],-1,1)*32767|0;return o},l=I(R[0]),r=R[1]&&I(R[1]),out=[];
+ for(let i=0;i<l.length;i+=1152){const b=r?E.encodeBuffer(l.subarray(i,i+1152),r.subarray(i,i+1152)):E.encodeBuffer(l.subarray(i,i+1152));if(b.length)out.push(b);if(i%(1152*150)==0)await new Promise(z=>setTimeout(z))}out.push(E.flush());return new Blob(out,{type:'audio/mpeg'})}
+async function build(fo,sx){req();const fx=FX();let B=C,p=pk,suf=sx||'';if($('#so').checked&&part()){const[i0,i1]=idx();B=C.map(c=>c.subarray(i0,i1));p=0;suf+='_구간'}toast('만드는 중…');await new Promise(z=>setTimeout(z,30));const R=render(B,fx,0,null,p);let ext=fo||$('#fm').value,blob;
+ if(ext=='mp3'&&![8000,11025,12000,16000,22050,24000,32000,44100,48000].includes(sr)){toast('이 곡은 MP3 미지원 샘플레이트라 WAV로 저장해요');ext='wav'}
+ blob=ext=='mp3'?await mp3(R,+$('#kb').value):wav(R);return{blob,sec:R[0].length/sr,name:(name.replace(/\.[^.]+$/,'')||'BGM')+'_BGM'+suf+'.'+ext}}
+// ── 보관함 (IndexedDB: travel-bgm / bgm) ──
+const DB=()=>new Promise((ok,no)=>{const r=indexedDB.open('travel-bgm',1);r.onupgradeneeded=()=>r.result.createObjectStore('bgm',{keyPath:'id',autoIncrement:true});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+const tx=async(m,f)=>{const d=await DB();return new Promise((ok,no)=>{const t=d.transaction('bgm',m),r=f(t.objectStore('bgm'));t.oncomplete=()=>ok(r.result);t.onerror=()=>no(t.error)})};
+let au=null;
+async function libList(){const el=$('#lib');try{const L=await tx('readonly',s=>s.getAll());el.innerHTML='';if(!L.length){el.innerHTML='<p class="mut">보관함이 비어 있어요.</p>';return}
+ L.reverse().forEach(it=>{const d=document.createElement('div'),sp=document.createElement('span');sp.textContent=it.name+' · '+fmt(it.sec);d.append(sp);
+  [['듣기',()=>{if(au){au.pause();au=null;return}au=new Audio(URL.createObjectURL(it.blob));au.onended=()=>au=null;au.play()}],['편집',()=>openBlob(it.blob,it.name)],['삭제',async()=>{await tx('readwrite',s=>s.delete(it.id));libList()}]].forEach(([t,f])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>run(f);d.append(b)});el.append(d)})}catch(e){el.innerHTML='<p class="mut">보관함을 열 수 없어요.</p>'}}
+// ── 동작 연결 ──
+const NP=()=>window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Ringtone;
+const b64=b=>new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result.split(',')[1]);r.readAsDataURL(b)});
+const dl=o=>{const a=document.createElement('a');a.href=URL.createObjectURL(o.blob);a.download=o.name;a.click()};
+const A={open:()=>$('#fi').click(),pp:()=>playing?pause():play(),rs0:()=>{req();stop();setCur(0);ui();draw()},zi:()=>setZoom(zoom*2),zo:()=>setZoom(zoom/2),zr:()=>setZoom(1),
+ zs:()=>{req();if(sel[1]-sel[0]<.05)throw Error('먼저 파형을 드래그해 구간을 고르세요');zoom=clamp(dur()/((sel[1]-sel[0])*1.3),1,128);vs=sel[0]-(vspan()-(sel[1]-sel[0]))/2;clampView();draw()},
+ undo:()=>{stop();const h=hist.pop();if(!h)throw Error('되돌릴 작업이 없어요');rdo.push({C,label:h.label});setAudio(h.C);toast('되돌림: '+h.label)},
+ redo:()=>{stop();const h=rdo.pop();if(!h)throw Error('다시 실행할 작업이 없어요');hist.push({C,label:h.label});setAudio(h.C);toast('다시 실행: '+h.label)},
+ orig:async()=>{if(!orig)throw Error('먼저 음악 파일을 열어 주세요');const b=await AC.decodeAudioData(await orig.arrayBuffer());commit([...Array(Math.min(2,b.numberOfChannels))].map((_,i)=>b.getChannelData(i).slice()),'원본 다시 불러오기')},
+ n:b=>{req();const v=b.dataset.v,d=parseFloat(v.slice(1));v[0]=='s'?setSel(Math.min(sel[0]+d,sel[1]),sel[1],1):setSel(sel[0],Math.max(sel[1]+d,sel[0]),1)},
+ cs:()=>{req();setSel(cur,Math.max(cur,sel[1]),1)},ce:()=>{req();setSel(Math.min(sel[0],cur),cur,1)},cl:()=>{req();if(part())last=[...sel];setSel(0,dur())},
+ rsel:()=>{req();if(last&&(Math.abs(last[0]-sel[0])>.02||Math.abs(last[1]-sel[1])>.02))return setSel(last[0],last[1]);setSel(cur,Math.min(dur(),cur+10),1)},
+ keep:()=>{req();if(!part())throw Error('먼저 파형을 드래그해 남길 구간을 고르세요');const[i,j]=idx();commit(cutC(C,i,j),'선택만 남기기')},
+ del:()=>{req();if(!part())throw Error('먼저 파형을 드래그해 삭제할 구간을 고르세요');const[i,j]=idx(),xf=Math.round(parse($('#xf').value||'0')*sr),a=cutC(C,0,i),b=cutC(C,j,N());
+  const R=i==0?b:j>=N()?a:join(a,b,xf);if(!R[0].length)throw Error('전부 지워져서 남는 소리가 없어요');commit(R,'선택 삭제')},
+ trim:()=>{req();const th=.00316;let a=-1,z=0;for(let i=0;i<N();i++){if(C.some(c=>Math.abs(c[i])>th)){if(a<0)a=i;z=i}}if(a<0||N()-(z-a+1)<sr*.01)throw Error('앞뒤에 지울 무음이 거의 없어요');commit(cutC(C,a,z+1),'앞뒤 무음 제거')},
+ ps:()=>playSel(),pa:()=>playSel('s'),pz:()=>playSel('e'),seam,
+ loop:()=>{req();const t=parseInt($('#rp').value);if(!(t>=1))throw Error('횟수는 1 이상의 정수로 입력하세요');commit(loopBuild(C,t+1,Math.round(parse($('#xf').value||'0')*sr)),'전체 '+t+'회 이어붙이기')},
+ fit:()=>{req();const tg=Math.round(parse($('#tg').value)*sr),xf=Math.round(parse($('#xf').value||'0')*sr),L=N();if(tg<sr/2)throw Error('목표 길이는 0.5초 이상이어야 해요');if(Math.abs(tg-L)<sr*.01)throw Error('이미 목표 길이와 같아요');
+  if(tg<L)return commit(cutC(C,0,tg),'목표 길이로 자르기');const cp=1+Math.ceil((tg-L)/Math.max(1,L-Math.min(xf,L>>1)));commit(cutC(loopBuild(C,cp,xf),0,tg),'목표 길이에 맞춰 '+cp+'회 반복')},
+ save:async()=>{const o=await build(),np=NP();if(np){await np.save({data:await b64(o.blob),name:o.name,mime:o.blob.type,kind:'music'});toast('내 파일 > 음악 > BGM커터 폴더에 저장했어요')}else{dl(o);toast('저장했어요: '+o.name)}},
+ share:async()=>{const o=await build(),f=new File([o.blob],o.name,{type:o.blob.type});if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else throw Error('이 기기에서는 공유를 지원하지 않아요. 기기에 저장을 눌러 주세요')},
+ ring:async()=>{const kind=$('#rk').value,np=NP(),o=await build('mp3',{ringtone:'_벨소리',alarm:'_알람음',notification:'_알림음'}[kind]);
+  if(!np){dl(o);throw Error('벨소리 지정은 설치 앱(APK)에서만 돼요. 파일은 저장했으니 설정 > 소리에서 직접 골라 주세요')}
+  const dft=$('#rdf').checked;if(dft&&!(await np.canWriteSettings()).granted){await np.openWriteSettings();throw Error('‘시스템 설정 변경 허용’을 켜고 돌아와서 다시 눌러 주세요')}
+  const r=await np.save({data:await b64(o.blob),name:o.name,mime:o.blob.type,kind,setDefault:dft});toast((r.applied?'기본으로 설정했어요':'저장했어요 · 설정 > 소리에서 고르세요')+(o.sec>40?' (벨소리는 30초 안팎이 좋아요)':''))},
+ lib:async()=>{const o=await build();await tx('readwrite',s=>s.add({name:o.name,blob:o.blob,sec:o.sec,ts:Date.now()}));toast('보관함에 담았어요');libList()}};
+const run=async f=>{try{await f()}catch(x){if(x)toast(x.message||String(x),1)}};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)run(()=>A[b.dataset.a](b));const t=e.target.closest('[data-t]');if(t){$$('nav button').forEach(x=>x.classList.toggle('on',x==t));$$('section').forEach(s=>s.hidden=s.id!='t-'+t.dataset.t);if(t.dataset.t=='out')libList()}});
+$('#fi').onchange=e=>{const f=e.target.files[0];if(f)openBlob(f,f.name);e.target.value=''};
+for(const id of['#ss','#se'])$(id).onchange=()=>run(()=>{req();const s=parse($('#ss').value),e=parse($('#se').value);if(s>=e||e>dur()+.05){setSel(sel[0],sel[1]);throw Error('시작은 끝보다 작고 전체 길이 안이어야 해요')}setSel(s,e,1)});
+$('#tm').onclick=()=>run(()=>{req();const v=prompt('이동할 위치 (예: 1:23.5)',fmt(cur));if(v)seek(clamp(parse(v),0,dur()))});
+['#fi_','#fo','#cv'].forEach(id=>$(id).addEventListener('input',()=>{clip();draw()}));$('#nm').onchange=clip;$('#vol').oninput=clip;
+try{const S=JSON.parse(localStorage.bgm||'{}');$$('[data-k]').forEach(e=>{if(S[e.dataset.k]!=null)e.value=S[e.dataset.k];e.addEventListener('change',()=>{S[e.dataset.k]=e.value;localStorage.bgm=JSON.stringify(S)})})}catch(e){}
+addEventListener('resize',fit);fit();ui();setCur(0);
+if(NP())$('[data-a=share]').hidden=true;
+if('serviceWorker'in navigator&&!window.Capacitor)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
